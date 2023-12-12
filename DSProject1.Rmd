@@ -1,0 +1,72 @@
+---
+title: "NYPD Shooting Incident Data Report"
+author: "[Author Redacted]"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+## Introduction
+
+For this project, I used data from https://catalog.data.gov/dataset, called "NYDP Shooting Incident Data (Historic)." When I downloaded the data, it had last been updated on September 2, 2023. Here is a summary of the data from the government:
+
+> "This is a breakdown of every shooting incident that occurred in NYC going back to 2006 through the end of the previous calendar year. This data is manually extracted every quarter and reviewed by the Office of Management Analysis and Planning before being posted on the NYPD website. Each record represents a shooting incident in NYC and includes information about the event, the location and time of occurrence. In addition, information related to suspect and victim demographics is also included. This data can be used by the public to explore the nature of shooting/criminal activity. Please refer to the attached data footnotes for additional information about this dataset."
+
+## Figures
+
+Here we can see some figures that I put together. First, there is the number of incidents per boro. You can see that Staten Island by far had the least, and Brooklyn had the most.
+
+```{r, fig.show='hold', fig.width = 10}
+library(tidyr)
+library(ggplot2)
+d <- read.csv("NYPD_Shooting_Incident_Data__Historic_.csv")
+d_boro <- aggregate(d$OCCUR_DATE,list(d$BORO),FUN = length)
+colnames(d_boro) <- c("Boro", "Sum")
+d_boro <- d_boro[order(d_boro$Sum, decreasing = TRUE),]
+x_boro <- d_boro[['Boro']]
+y_boro <- d_boro[['Sum']]
+par(mar=c(4,8,0,0))
+barplot(y_boro, names.arg = x_boro, horiz = TRUE,las=2 )
+```
+
+Next we can see how the breakdown per sex of the victims plays out. While most of the victims were male, there were more female victims in Brooklyn than there were in all of Staten Island combined.
+```{r, fig.show='hold'}
+d_sex <- d
+d_sex <- aggregate(d$OCCUR_DATE,list(d$BORO,d$VIC_SEX),FUN = length)
+colnames(d_sex) <- c("Boro", "Sex", "Sum")
+d_sex <- d_sex[order(d_sex$Sum, decreasing = TRUE),]
+knitr::kable(head(d_sex, 13))
+
+```
+
+## Time Series
+
+I wanted to also see how the data worked over time, as I had read in the news that shooting rates went up in the 20's. That does seem to be the case, as the few years before 2020 had shooting rates that were half of the 20's rates; however, we can see earlier in the 10's that shooting rates were larger in quantity than in the early 20's. I think I can say that this bias toward a news story I read does not play out in this data.
+
+```{r, echo=FALSE, results='asis', fig.width = 10}
+d_time <- d
+d_time["OCCUR_DATE"] <- format(as.Date(d_time$OCCUR_DATE, format="%d/%m/%Y"),"%Y")
+d_time <- aggregate(d_time$OCCUR_DATE,list(d_time$BORO,d_time$VIC_SEX,d_time$OCCUR_DATE),FUN = length)
+colnames(d_time) <- c("Boro", "Sex", "Year", "Sum")
+d_time <- d_time[order(d_time$Sum, decreasing = TRUE),]
+colnames(d_time) <- c("Boro", "Sex", "Year", "Sum")
+x_time <- d_time[['Year']]
+ggplot(data = d_time, aes(x=x_time, y=d_time$Sum)) + geom_line(aes(colour=d_time$Boro)) + geom_point()
+options(repr.plot.width=15, repr.plot.height=8)
+```
+
+Data Set:
+
+> "NYDP Shooting Incident Data (Historic)"
+([via](https://catalog.data.gov/dataset))
